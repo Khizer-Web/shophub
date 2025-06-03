@@ -1,19 +1,18 @@
-import apiClient from './apiClient';
+import { supabase } from '../lib/supabase';
 import { Product, ApiResponse } from '../types';
-import { mockProducts } from '../data/mockData';
-
-// In a real app, these would make actual API calls to the PHP backend
-// For demo purposes, we'll use the mock data
 
 export const getProducts = async (): Promise<ApiResponse<Product[]>> => {
   try {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return { success: true, data: mockProducts };
-    
-    // In production:
-    // const response = await apiClient.get('/products');
-    // return response.data;
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return { success: true, data };
   } catch (error) {
     return { success: false, error: 'Failed to fetch products' };
   }
@@ -21,19 +20,21 @@ export const getProducts = async (): Promise<ApiResponse<Product[]>> => {
 
 export const getProductById = async (id: number): Promise<ApiResponse<Product>> => {
   try {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const product = mockProducts.find(p => p.id === id);
-    
-    if (!product) {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
       return { success: false, error: 'Product not found' };
     }
-    
-    return { success: true, data: product };
-    
-    // In production:
-    // const response = await apiClient.get(`/product/${id}`);
-    // return response.data;
+
+    return { success: true, data };
   } catch (error) {
     return { success: false, error: 'Failed to fetch product details' };
   }
@@ -41,16 +42,72 @@ export const getProductById = async (id: number): Promise<ApiResponse<Product>> 
 
 export const getProductsByCategory = async (category: string): Promise<ApiResponse<Product[]>> => {
   try {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 400));
-    const filteredProducts = mockProducts.filter(p => p.category === category);
-    
-    return { success: true, data: filteredProducts };
-    
-    // In production:
-    // const response = await apiClient.get(`/products?category=${category}`);
-    // return response.data;
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('category', category)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return { success: true, data };
   } catch (error) {
     return { success: false, error: 'Failed to fetch products by category' };
+  }
+};
+
+export const createProduct = async (product: Omit<Product, 'id'>): Promise<ApiResponse<Product>> => {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .insert([product])
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: 'Failed to create product' };
+  }
+};
+
+export const updateProduct = async (id: number, updates: Partial<Product>): Promise<ApiResponse<Product>> => {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: 'Failed to update product' };
+  }
+};
+
+export const deleteProduct = async (id: number): Promise<ApiResponse<null>> => {
+  try {
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      throw error;
+    }
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: 'Failed to delete product' };
   }
 };
