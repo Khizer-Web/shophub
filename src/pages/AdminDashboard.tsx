@@ -34,6 +34,203 @@ const initialProductForm: ProductFormData = {
   category: ''
 };
 
+// Add DashboardContent component
+const DashboardContent: React.FC<{ products: Product[] }> = ({ products }) => {
+  const totalProducts = products.length;
+  const totalOrders = mockOrders.length;
+  const totalUsers = mockUsers.length;
+  const lowStockProducts = products.filter(p => p.stock < 10).length;
+
+  const stats = [
+    { title: 'Total Products', value: totalProducts, icon: Package, color: 'bg-blue-500' },
+    { title: 'Total Orders', value: totalOrders, icon: ShoppingBag, color: 'bg-green-500' },
+    { title: 'Total Users', value: totalUsers, icon: Users, color: 'bg-purple-500' },
+    { title: 'Low Stock Items', value: lowStockProducts, icon: BarChart2, color: 'bg-red-500' }
+  ];
+
+  return (
+    <div>
+      <h2 className="text-xl font-semibold mb-6">Dashboard Overview</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat, index) => (
+          <div key={index} className="bg-white rounded-lg shadow p-6">
+            <div className={`inline-flex p-3 rounded-lg ${stat.color}`}>
+              <stat.icon className="h-6 w-6 text-white" />
+            </div>
+            <h3 className="text-lg font-semibold mt-4">{stat.title}</h3>
+            <p className="text-3xl font-bold mt-2">{stat.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Add OrdersContent component
+const OrdersContent: React.FC<{
+  searchQuery: string;
+  setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
+}> = ({ searchQuery, setSearchQuery }) => {
+  const filteredOrders = mockOrders.filter(order => {
+    if (!searchQuery) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      order.id.toString().includes(query) ||
+      order.status.toLowerCase().includes(query) ||
+      order.user_email.toLowerCase().includes(query)
+    );
+  });
+
+  return (
+    <div>
+      <h2 className="text-xl font-semibold mb-6">Manage Orders</h2>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Order ID
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Customer
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Total
+              </th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredOrders.map((order) => (
+              <tr key={order.id}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  #{order.id}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {order.user_email}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    order.status === 'completed'
+                      ? 'bg-green-100 text-green-800'
+                      : order.status === 'pending'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {order.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  ${order.total.toFixed(2)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button
+                    className="text-blue-600 hover:text-blue-900"
+                    title="View order details"
+                  >
+                    <Eye size={18} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// Add UsersContent component
+const UsersContent: React.FC<{
+  searchQuery: string;
+  setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
+}> = ({ searchQuery, setSearchQuery }) => {
+  const filteredUsers = mockUsers.filter(user => {
+    if (!searchQuery) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      user.email.toLowerCase().includes(query) ||
+      user.name.toLowerCase().includes(query) ||
+      user.id.toString().includes(query)
+    );
+  });
+
+  return (
+    <div>
+      <h2 className="text-xl font-semibold mb-6">Manage Users</h2>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                User
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Email
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Role
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Joined
+              </th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredUsers.map((user) => (
+              <tr key={user.id}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <div className="h-10 w-10 flex-shrink-0">
+                      <img className="h-10 w-10 rounded-full" src={user.avatar} alt="" />
+                    </div>
+                    <div className="ml-4">
+                      <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {user.email}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    user.isAdmin
+                      ? 'bg-purple-100 text-purple-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {user.isAdmin ? 'Admin' : 'User'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {new Date(user.created_at).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button
+                    className="text-blue-600 hover:text-blue-900"
+                    title="View user details"
+                  >
+                    <Eye size={18} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
 const AdminDashboard: React.FC = () => {
   const { isAdmin, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -184,7 +381,7 @@ const AdminDashboard: React.FC = () => {
     }
     
     if (error) {
-      return <Alert type="error\" message={error} onClose={() => setError(null)} />;
+      return <Alert type="error" message={error} onClose={() => setError(null)} />;
     }
     
     switch (activeTab) {
