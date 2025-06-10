@@ -63,10 +63,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .from('users')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error loading user profile:', error);
+        setUser(null);
+        return;
+      }
+
+      if (!userProfile) {
+        console.error('User profile not found');
         setUser(null);
         return;
       }
@@ -75,7 +81,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         id: userProfile.id,
         name: userProfile.name,
         email: userProfile.email,
-        isAdmin: userProfile.raw_user_meta_data?.isAdmin || false
+        isAdmin: (userProfile.raw_user_meta_data as any)?.isAdmin || false
       };
 
       setUser(userData);

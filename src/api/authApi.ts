@@ -21,16 +21,20 @@ export const login = async (email: string, password: string): Promise<ApiRespons
       .from('users')
       .select('*')
       .eq('id', data.user.id)
-      .single();
+      .maybeSingle();
 
     if (profileError) {
-      // If user doesn't exist in users table, create them
+      return { success: false, error: 'Failed to fetch user profile' };
+    }
+
+    // If user doesn't exist in users table, create them
+    if (!userProfile) {
       const { data: newUser, error: createError } = await supabase
         .from('users')
         .insert([
           {
             id: data.user.id,
-            email: data.user.email,
+            email: data.user.email || '',
             name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
             raw_user_meta_data: { isAdmin: false }
           }
@@ -46,7 +50,7 @@ export const login = async (email: string, password: string): Promise<ApiRespons
         id: newUser.id,
         name: newUser.name,
         email: newUser.email,
-        isAdmin: newUser.raw_user_meta_data?.isAdmin || false
+        isAdmin: (newUser.raw_user_meta_data as any)?.isAdmin || false
       };
 
       return {
@@ -62,7 +66,7 @@ export const login = async (email: string, password: string): Promise<ApiRespons
       id: userProfile.id,
       name: userProfile.name,
       email: userProfile.email,
-      isAdmin: userProfile.raw_user_meta_data?.isAdmin || false
+      isAdmin: (userProfile.raw_user_meta_data as any)?.isAdmin || false
     };
 
     return {
@@ -103,7 +107,7 @@ export const register = async (name: string, email: string, password: string): P
       .insert([
         {
           id: data.user.id,
-          email: data.user.email,
+          email: data.user.email || '',
           name: name,
           raw_user_meta_data: { isAdmin: false }
         }
@@ -119,7 +123,7 @@ export const register = async (name: string, email: string, password: string): P
       id: userProfile.id,
       name: userProfile.name,
       email: userProfile.email,
-      isAdmin: userProfile.raw_user_meta_data?.isAdmin || false
+      isAdmin: (userProfile.raw_user_meta_data as any)?.isAdmin || false
     };
 
     return {
@@ -161,17 +165,21 @@ export const getCurrentUser = async (): Promise<ApiResponse<User>> => {
       .from('users')
       .select('*')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
     if (profileError) {
       return { success: false, error: 'Failed to fetch user profile' };
+    }
+
+    if (!userProfile) {
+      return { success: false, error: 'User profile not found' };
     }
 
     const userData: User = {
       id: userProfile.id,
       name: userProfile.name,
       email: userProfile.email,
-      isAdmin: userProfile.raw_user_meta_data?.isAdmin || false
+      isAdmin: (userProfile.raw_user_meta_data as any)?.isAdmin || false
     };
 
     return { success: true, data: userData };
