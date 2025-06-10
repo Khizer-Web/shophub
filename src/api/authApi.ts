@@ -1,41 +1,77 @@
-import apiClient from './apiClient';
+import { supabase } from '../lib/supabase';
 import { User, ApiResponse } from '../types';
-import { mockUsers } from '../data/mockData';
-
-// In a real app, these would make actual API calls to the PHP backend
-// For demo purposes, we'll simulate with localStorage
 
 export const login = async (email: string, password: string): Promise<ApiResponse<{ user: User; token: string }>> => {
   try {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Find user in mock data
-    const user = mockUsers.find(u => u.email === email);
-    
-    // Simulate authentication
-    if (!user || password !== 'password123') { // Demo password is 'password123' for all users
-      return { success: false, error: 'Invalid email or password' };
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
     }
-    
-    // Generate a fake token
-    const token = `fake-jwt-token-${Date.now()}`;
-    
-    // Store in localStorage
-    localStorage.setItem('authToken', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    
-    return { 
-      success: true, 
+
+    if (!data.user) {
+      return { success: false, error: 'Login failed' };
+    }
+
+    // Get user profile from users table
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+
+    if (profileError) {
+      // If user doesn't exist in users table, create them
+      const { data: newUser, error: createError } = await supabase
+        .from('users')
+        .insert([
+          {
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
+            raw_user_meta_data: { isAdmin: false }
+          }
+        ])
+        .select()
+        .single();
+
+      if (createError) {
+        return { success: false, error: 'Failed to create user profile' };
+      }
+
+      const user: User = {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        isAdmin: newUser.raw_user_meta_data?.isAdmin || false
+      };
+
+      return {
+        success: true,
+        data: {
+          user,
+          token: data.session?.access_token || ''
+        }
+      };
+    }
+
+    const user: User = {
+      id: userProfile.id,
+      name: userProfile.name,
+      email: userProfile.email,
+      isAdmin: userProfile.raw_user_meta_data?.isAdmin || false
+    };
+
+    return {
+      success: true,
       data: {
         user,
-        token
+        token: data.session?.access_token || ''
       }
     };
-    
-    // In production:
-    // const response = await apiClient.post('/user/login', { email, password });
-    // return response.data;
   } catch (error) {
     return { success: false, error: 'Login failed' };
   }
@@ -43,40 +79,56 @@ export const login = async (email: string, password: string): Promise<ApiRespons
 
 export const register = async (name: string, email: string, password: string): Promise<ApiResponse<{ user: User; token: string }>> => {
   try {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Check if user already exists
-    if (mockUsers.some(u => u.email === email)) {
-      return { success: false, error: 'Email already in use' };
-    }
-    
-    // Create new user (in a real app, this would be done on the server)
-    const newUser: User = {
-      id: mockUsers.length + 1,
-      name,
+    const { data, error } = await supabase.auth.signUp({
       email,
-      isAdmin: false
+      password,
+      options: {
+        data: {
+          name: name
+        }
+      }
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    if (!data.user) {
+      return { success: false, error: 'Registration failed' };
+    }
+
+    // Create user profile in users table
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .insert([
+        {
+          id: data.user.id,
+          email: data.user.email,
+          name: name,
+          raw_user_meta_data: { isAdmin: false }
+        }
+      ])
+      .select()
+      .single();
+
+    if (profileError) {
+      return { success: false, error: 'Failed to create user profile' };
+    }
+
+    const user: User = {
+      id: userProfile.id,
+      name: userProfile.name,
+      email: userProfile.email,
+      isAdmin: userProfile.raw_user_meta_data?.isAdmin || false
     };
-    
-    // Generate a fake token
-    const token = `fake-jwt-token-${Date.now()}`;
-    
-    // Store in localStorage
-    localStorage.setItem('authToken', token);
-    localStorage.setItem('user', JSON.stringify(newUser));
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       data: {
-        user: newUser,
-        token
+        user,
+        token: data.session?.access_token || ''
       }
     };
-    
-    // In production:
-    // const response = await apiClient.post('/user/register', { name, email, password });
-    // return response.data;
   } catch (error) {
     return { success: false, error: 'Registration failed' };
   }
@@ -84,18 +136,13 @@ export const register = async (name: string, email: string, password: string): P
 
 export const logout = async (): Promise<ApiResponse<null>> => {
   try {
-    // Clear localStorage
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
+    const { error } = await supabase.auth.signOut();
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
     return { success: true };
-    
-    // In production:
-    // const response = await apiClient.post('/user/logout');
-    // return response.data;
   } catch (error) {
     return { success: false, error: 'Logout failed' };
   }
@@ -103,21 +150,31 @@ export const logout = async (): Promise<ApiResponse<null>> => {
 
 export const getCurrentUser = async (): Promise<ApiResponse<User>> => {
   try {
-    // Get from localStorage
-    const user = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user') || '{}') : null;
-    
-    if (!user) {
+    const { data: { user }, error } = await supabase.auth.getUser();
+
+    if (error || !user) {
       return { success: false, error: 'No user logged in' };
     }
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    return { success: true, data: user };
-    
-    // In production:
-    // const response = await apiClient.get('/user/profile');
-    // return response.data;
+
+    // Get user profile from users table
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      return { success: false, error: 'Failed to fetch user profile' };
+    }
+
+    const userData: User = {
+      id: userProfile.id,
+      name: userProfile.name,
+      email: userProfile.email,
+      isAdmin: userProfile.raw_user_meta_data?.isAdmin || false
+    };
+
+    return { success: true, data: userData };
   } catch (error) {
     return { success: false, error: 'Failed to fetch user profile' };
   }

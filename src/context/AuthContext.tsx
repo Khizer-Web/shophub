@@ -1,7 +1,6 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '../types';
-import { getCurrentUser as fetchCurrentUser } from '../api/authApi';
-import { isAuthenticated as checkAuth, getCurrentUser as getLocalUser } from '../utils/auth';
+import { supabase } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -30,34 +29,64 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const loadUser = async () => {
-      if (checkAuth()) {
-        // Try to get user from localStorage first for immediate UI update
-        const localUser = getLocalUser();
-        if (localUser) {
-          setUser(localUser);
-        }
-        
-        // Then verify with API
-        const response = await fetchCurrentUser();
-        if (response.success && response.data) {
-          setUser(response.data);
-        } else {
-          // If API call fails, clear user state
-          setUser(null);
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('user');
-        }
+    // Get initial session
+    const getInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        await loadUserProfile(session.user.id);
       }
+      
       setIsLoading(false);
     };
 
-    loadUser();
+    getInitialSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          await loadUserProfile(session.user.id);
+        } else {
+          setUser(null);
+        }
+        setIsLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
+  const loadUserProfile = async (userId: string) => {
+    try {
+      const { data: userProfile, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error loading user profile:', error);
+        setUser(null);
+        return;
+      }
+
+      const userData: User = {
+        id: userProfile.id,
+        name: userProfile.name,
+        email: userProfile.email,
+        isAdmin: userProfile.raw_user_meta_data?.isAdmin || false
+      };
+
+      setUser(userData);
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      setUser(null);
+    }
+  };
+
   const logout = async (): Promise<void> => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
+    await supabase.auth.signOut();
     setUser(null);
   };
 
