@@ -23,8 +23,7 @@ const ProductDetailPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
       
-      const productId = parseInt(id);
-      const response = await getProductById(productId);
+      const response = await getProductById(id);
       
       if (response.success && response.data) {
         setProduct(response.data);

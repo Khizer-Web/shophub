@@ -1,29 +1,30 @@
 export interface Product {
-  id: number;
+  id: string;
   title: string;
   description: string;
   price: number;
   image: string;
   stock: number;
   category: string;
+  created_at?: string;
 }
 
 export interface CartItem {
-  id: number;
+  id: string;
   product: Product;
   quantity: number;
 }
 
 export interface User {
-  id: number;
+  id: string;
   name: string;
   email: string;
   isAdmin: boolean;
 }
 
 export interface Order {
-  id: number;
-  userId: number;
+  id: string;
+  userId: string;
   totalPrice: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered';
   createdAt: string;
@@ -31,9 +32,9 @@ export interface Order {
 }
 
 export interface OrderItem {
-  id: number;
-  orderId: number;
-  productId: number;
+  id: string;
+  orderId: string;
+  productId: string;
   quantity: number;
   price: number;
   product?: Product;

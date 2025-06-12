@@ -1,24 +1,43 @@
-import apiClient from './apiClient';
+import { supabase } from '../lib/supabase';
 import { CartItem, ApiResponse, Product } from '../types';
-
-// In a real app, these would make actual API calls to the PHP backend
-// For demo purposes, we'll simulate with localStorage
 
 export const getCart = async (): Promise<ApiResponse<CartItem[]>> => {
   try {
-    // Get from localStorage for the demo
-    const cartItems = localStorage.getItem('cart')
-      ? JSON.parse(localStorage.getItem('cart') || '[]')
-      : [];
+    const { data: { user } } = await supabase.auth.getUser();
     
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
+    if (!user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    const { data, error } = await supabase
+      .from('cart_items')
+      .select(`
+        id,
+        quantity,
+        products:product_id (
+          id,
+          title,
+          description,
+          price,
+          image,
+          stock,
+          category,
+          created_at
+        )
+      `)
+      .eq('user_id', user.id);
+
+    if (error) {
+      throw error;
+    }
+
+    const cartItems: CartItem[] = data.map((item: any) => ({
+      id: item.id,
+      quantity: item.quantity,
+      product: item.products
+    }));
+
     return { success: true, data: cartItems };
-    
-    // In production:
-    // const response = await apiClient.get('/cart');
-    // return response.data;
   } catch (error) {
     return { success: false, error: 'Failed to fetch cart items' };
   }
@@ -26,101 +45,101 @@ export const getCart = async (): Promise<ApiResponse<CartItem[]>> => {
 
 export const addToCart = async (product: Product, quantity: number): Promise<ApiResponse<CartItem[]>> => {
   try {
-    // Get current cart
-    let cartItems: CartItem[] = localStorage.getItem('cart')
-      ? JSON.parse(localStorage.getItem('cart') || '[]')
-      : [];
+    const { data: { user } } = await supabase.auth.getUser();
     
-    // Check if item already exists in cart
-    const existingItemIndex = cartItems.findIndex(item => item.product.id === product.id);
-    
-    if (existingItemIndex !== -1) {
-      // Update quantity if item exists
-      cartItems[existingItemIndex].quantity += quantity;
-    } else {
-      // Add new item if it doesn't exist
-      cartItems.push({
-        id: Date.now(), // Temporary ID for the cart item
-        product,
-        quantity
-      });
+    if (!user) {
+      return { success: false, error: 'User not authenticated' };
     }
-    
-    // Save to localStorage for the demo
-    localStorage.setItem('cart', JSON.stringify(cartItems));
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    return { success: true, data: cartItems };
-    
-    // In production:
-    // const response = await apiClient.post('/cart', { productId: product.id, quantity });
-    // return response.data;
+
+    // Check if item already exists in cart
+    const { data: existingItem } = await supabase
+      .from('cart_items')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('product_id', product.id)
+      .single();
+
+    if (existingItem) {
+      // Update quantity if item exists
+      const { error } = await supabase
+        .from('cart_items')
+        .update({ quantity: existingItem.quantity + quantity })
+        .eq('id', existingItem.id);
+
+      if (error) throw error;
+    } else {
+      // Insert new item if it doesn't exist
+      const { error } = await supabase
+        .from('cart_items')
+        .insert([{
+          user_id: user.id,
+          product_id: product.id,
+          quantity
+        }]);
+
+      if (error) throw error;
+    }
+
+    // Return updated cart
+    return await getCart();
   } catch (error) {
     return { success: false, error: 'Failed to add item to cart' };
   }
 };
 
-export const updateCartItem = async (itemId: number, quantity: number): Promise<ApiResponse<CartItem[]>> => {
+export const updateCartItem = async (itemId: string, quantity: number): Promise<ApiResponse<CartItem[]>> => {
   try {
-    // Get current cart
-    let cartItems: CartItem[] = localStorage.getItem('cart')
-      ? JSON.parse(localStorage.getItem('cart') || '[]')
-      : [];
+    const { data: { user } } = await supabase.auth.getUser();
     
-    // Find the item
-    const itemIndex = cartItems.findIndex(item => item.id === itemId);
-    
-    if (itemIndex === -1) {
-      return { success: false, error: 'Item not found in cart' };
+    if (!user) {
+      return { success: false, error: 'User not authenticated' };
     }
-    
-    // Update quantity
+
     if (quantity <= 0) {
       // Remove item if quantity is 0 or negative
-      cartItems = cartItems.filter(item => item.id !== itemId);
+      const { error } = await supabase
+        .from('cart_items')
+        .delete()
+        .eq('id', itemId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
     } else {
-      cartItems[itemIndex].quantity = quantity;
+      // Update quantity
+      const { error } = await supabase
+        .from('cart_items')
+        .update({ quantity })
+        .eq('id', itemId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
     }
-    
-    // Save to localStorage
-    localStorage.setItem('cart', JSON.stringify(cartItems));
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    return { success: true, data: cartItems };
-    
-    // In production:
-    // const response = await apiClient.put(`/cart/${itemId}`, { quantity });
-    // return response.data;
+
+    // Return updated cart
+    return await getCart();
   } catch (error) {
     return { success: false, error: 'Failed to update cart item' };
   }
 };
 
-export const removeFromCart = async (itemId: number): Promise<ApiResponse<CartItem[]>> => {
+export const removeFromCart = async (itemId: string): Promise<ApiResponse<CartItem[]>> => {
   try {
-    // Get current cart
-    let cartItems: CartItem[] = localStorage.getItem('cart')
-      ? JSON.parse(localStorage.getItem('cart') || '[]')
-      : [];
+    const { data: { user } } = await supabase.auth.getUser();
     
-    // Remove the item
-    cartItems = cartItems.filter(item => item.id !== itemId);
-    
-    // Save to localStorage
-    localStorage.setItem('cart', JSON.stringify(cartItems));
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    return { success: true, data: cartItems };
-    
-    // In production:
-    // const response = await apiClient.delete(`/cart/${itemId}`);
-    // return response.data;
+    if (!user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    const { error } = await supabase
+      .from('cart_items')
+      .delete()
+      .eq('id', itemId)
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+
+    // Return updated cart
+    return await getCart();
   } catch (error) {
     return { success: false, error: 'Failed to remove item from cart' };
   }
@@ -128,17 +147,20 @@ export const removeFromCart = async (itemId: number): Promise<ApiResponse<CartIt
 
 export const clearCart = async (): Promise<ApiResponse<CartItem[]>> => {
   try {
-    // Clear cart in localStorage
-    localStorage.setItem('cart', JSON.stringify([]));
+    const { data: { user } } = await supabase.auth.getUser();
     
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
+    if (!user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    const { error } = await supabase
+      .from('cart_items')
+      .delete()
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+
     return { success: true, data: [] };
-    
-    // In production:
-    // const response = await apiClient.delete('/cart');
-    // return response.data;
   } catch (error) {
     return { success: false, error: 'Failed to clear cart' };
   }

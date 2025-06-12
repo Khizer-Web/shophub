@@ -18,7 +18,7 @@ export const getProducts = async (): Promise<ApiResponse<Product[]>> => {
   }
 };
 
-export const getProductById = async (id: number): Promise<ApiResponse<Product>> => {
+export const getProductById = async (id: string): Promise<ApiResponse<Product>> => {
   try {
     const { data, error } = await supabase
       .from('products')
@@ -58,7 +58,7 @@ export const getProductsByCategory = async (category: string): Promise<ApiRespon
   }
 };
 
-export const createProduct = async (product: Omit<Product, 'id'>): Promise<ApiResponse<Product>> => {
+export const createProduct = async (product: Omit<Product, 'id' | 'created_at'>): Promise<ApiResponse<Product>> => {
   try {
     const { data, error } = await supabase
       .from('products')
@@ -76,7 +76,7 @@ export const createProduct = async (product: Omit<Product, 'id'>): Promise<ApiRe
   }
 };
 
-export const updateProduct = async (id: number, updates: Partial<Product>): Promise<ApiResponse<Product>> => {
+export const updateProduct = async (id: string, updates: Partial<Product>): Promise<ApiResponse<Product>> => {
   try {
     const { data, error } = await supabase
       .from('products')
@@ -95,7 +95,7 @@ export const updateProduct = async (id: number, updates: Partial<Product>): Prom
   }
 };
 
-export const deleteProduct = async (id: number): Promise<ApiResponse<null>> => {
+export const deleteProduct = async (id: string): Promise<ApiResponse<null>> => {
   try {
     const { error } = await supabase
       .from('products')
