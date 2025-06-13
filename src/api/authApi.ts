@@ -21,14 +21,10 @@ export const login = async (email: string, password: string): Promise<ApiRespons
       .from('users')
       .select('*')
       .eq('id', data.user.id)
-      .maybeSingle();
+      .single();
 
     if (profileError) {
-      return { success: false, error: 'Failed to fetch user profile' };
-    }
-
-    // If user doesn't exist in users table, create them
-    if (!userProfile) {
+      // If user doesn't exist in users table, create them
       const { data: newUser, error: createError } = await supabase
         .from('users')
         .insert([
@@ -165,7 +161,7 @@ export const getCurrentUser = async (): Promise<ApiResponse<User>> => {
       .from('users')
       .select('*')
       .eq('id', user.id)
-      .maybeSingle();
+      .single();
 
     if (profileError) {
       return { success: false, error: 'Failed to fetch user profile' };

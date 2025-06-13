@@ -63,11 +63,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .from('users')
         .select('*')
         .eq('id', userId)
-        .maybeSingle();
+        .single();
 
       if (error) {
         console.error('Error loading user profile:', error);
-        setUser(null);
+        
+        // If user doesn't exist in users table, create them
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        
+        if (authUser) {
+          const { data: newUser, error: createError } = await supabase
+            .from('users')
+            .insert([
+              {
+                id: authUser.id,
+                email: authUser.email || '',
+                name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+                raw_user_meta_data: { isAdmin: false }
+              }
+            ])
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('Error creating user profile:', createError);
+            setUser(null);
+            return;
+          }
+
+          const userData: User = {
+            id: newUser.id,
+            name: newUser.name,
+            email: newUser.email,
+            isAdmin: (newUser.raw_user_meta_data as any)?.isAdmin || false
+          };
+
+          setUser(userData);
+        }
         return;
       }
 

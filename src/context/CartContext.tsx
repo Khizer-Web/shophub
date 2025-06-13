@@ -7,8 +7,8 @@ interface CartContextType {
   cartItems: CartItem[];
   isLoading: boolean;
   addItem: (product: Product, quantity: number) => Promise<void>;
-  updateItem: (itemId: number, quantity: number) => Promise<void>;
-  removeItem: (itemId: number) => Promise<void>;
+  updateItem: (itemId: string, quantity: number) => Promise<void>;
+  removeItem: (itemId: string) => Promise<void>;
   clearItems: () => Promise<void>;
   cartTotal: number;
   cartCount: number;
@@ -67,7 +67,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   };
 
-  const updateItem = async (itemId: number, quantity: number): Promise<void> => {
+  const updateItem = async (itemId: string, quantity: number): Promise<void> => {
     const item = cartItems.find(item => item.id === itemId);
     
     if (!item) return;
@@ -89,7 +89,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   };
 
-  const removeItem = async (itemId: number): Promise<void> => {
+  const removeItem = async (itemId: string): Promise<void> => {
     const item = cartItems.find(item => item.id === itemId);
     const response = await removeFromCart(itemId);
     if (response.success && response.data) {
