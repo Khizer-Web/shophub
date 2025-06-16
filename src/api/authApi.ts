@@ -32,7 +32,9 @@ export const login = async (email: string, password: string): Promise<ApiRespons
             id: data.user.id,
             email: data.user.email || '',
             name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
-            raw_user_meta_data: { isAdmin: false }
+            raw_user_meta_data: { 
+              isAdmin: email === 'admin@example.com' ? true : false 
+            }
           }
         ])
         .select()
@@ -105,7 +107,9 @@ export const register = async (name: string, email: string, password: string): P
           id: data.user.id,
           email: data.user.email || '',
           name: name,
-          raw_user_meta_data: { isAdmin: false }
+          raw_user_meta_data: { 
+            isAdmin: email === 'admin@example.com' ? true : false 
+          }
         }
       ])
       .select()
